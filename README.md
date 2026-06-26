@@ -21,17 +21,6 @@
   - **Utilization warnings** - Alerts when resources are over-subscribed
   - **Generic calculator** - Architecture-agnostic math tool you interpret based on your setup
 
-  ## How to Use
-
-  1. Download `cnv_capacity_planning_calculator.html`
-  2. Open it in any modern web browser
-  3. Adjust the input values for your scenario:
-     - VM workload specifications (count, vCPU, RAM, disk)
-     - Worker node specifications (CPU, RAM, storage)
-     - Overcommit ratios
-  4. Results calculate automatically
-  5. Review the summary report at the bottom
-
   ## Important Notes
 
   This is a **generic math calculator** that does NOT account for:
@@ -54,18 +43,6 @@
   Node RAM: 384 GB
   Storage per node: 7 TB
   Result: ~20 worker nodes
-
-  ### 1500 VMs - Dedicated Storage
-  VMs: 1500 (set disk to 0 in calculator)
-  Storage: Calculate separately - need 9 ODF nodes with 15 TB each
-  VM workers: 20 nodes (from calculator)
-  Total: 32 nodes (3 control + 9 ODF + 20 VM workers)
-
-  ## Architecture Support
-
-  - **Hyperconverged**: VMs + ODF storage on same nodes
-  - **Dedicated Storage**: Separate ODF storage nodes and VM compute nodes
-  - **External SAN**: Pure Storage or other external storage arrays
 
   ## Browser Compatibility
 
