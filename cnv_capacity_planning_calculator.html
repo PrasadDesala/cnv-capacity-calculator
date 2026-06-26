@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNV Capacity Planning Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .result-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #555;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #333;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .zone-distribution {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .zone-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 2px solid #667eea;
+        }
+
+        .zone-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .zone-card .value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CNV Capacity Planning Calculator</h1>
+            <p>Calculate worker node requirements based on VM workload specifications (CPU, RAM, storage)</p>
+            <p style="font-size: 0.9em; margin-top: 10px; opacity: 0.85;">⚠️ Generic calculator - does NOT account for ODF/CNV pod overhead, hypervisor resources, or specific architecture</p>
+        </div>
+
+        <div class="content">
+            <!-- Left Column: Inputs -->
+            <div>
+                <div class="section">
+                    <h2>VM Workload Specifications</h2>
+
+                    <div class="input-group">
+                        <label for="vmCount">Total VMs</label>
+                        <input type="number" id="vmCount" value="1500" min="100" max="20000" step="100">
+                        <small>Number of virtual machines to deploy</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="vmCpu">vCPUs per VM</label>
+                        <input type="number" id="vmCpu" value="2" min="1" max="32" step="1">
+                        <small>Virtual CPUs allocated per VM</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="vmRam">RAM per VM (GB)</label>
+                        <input type="number" id="vmRam" value="4" min="1" max="512" step="1">
+                        <small>Memory allocated per VM</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="vmDisk">Disk per VM (GB)</label>
+                        <input type="number" id="vmDisk" value="30" min="10" max="1000" step="10">
+                        <small>Storage allocated per VM</small>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Worker Node Specifications</h2>
+
+                    <div class="input-group">
+                        <label for="nodeCpu">CPU Cores per Worker Node</label>
+                        <input type="number" id="nodeCpu" value="48" min="16" max="128" step="8">
+                        <small>Physical CPU cores per worker</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="nodeRam">RAM per Worker Node (GB)</label>
+                        <input type="number" id="nodeRam" value="384" min="64" max="1024" step="64">
+                        <small>Physical memory per worker</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="nodeStorage">Storage per Worker Node (TB)</label>
+                        <input type="number" id="nodeStorage" value="3" min="0" max="50" step="0.5">
+                        <small>Storage capacity per worker (set to 0 if using external SAN or dedicated storage nodes)</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="vmDensity">Target VMs per Node</label>
+                        <input type="number" id="vmDensity" value="75" min="20" max="150" step="5">
+                        <small>Recommended: 50-100 VMs per node</small>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Overcommit Ratios</h2>
+
+                    <div class="input-group">
+                        <label for="cpuOvercommit">CPU Overcommit Ratio</label>
+                        <select id="cpuOvercommit">
+                            <option value="2">2:1 (Conservative)</option>
+                            <option value="4" selected>4:1 (Recommended)</option>
+                            <option value="6">6:1 (Moderate)</option>
+                            <option value="8">8:1 (Aggressive)</option>
+                        </select>
+                        <small>Physical CPU to vCPU ratio</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="ramOvercommit">RAM Overcommit Ratio</label>
+                        <select id="ramOvercommit">
+                            <option value="1">1:1 (No overcommit)</option>
+                            <option value="1.5" selected>1.5:1 (Recommended)</option>
+                            <option value="2">2:1 (Moderate)</option>
+                            <option value="3">3:1 (Aggressive)</option>
+                        </select>
+                        <small>Physical RAM to vRAM ratio</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="replicaFactor">Ceph Replication Factor</label>
+                        <select id="replicaFactor">
+                            <option value="2">2-way (Lower redundancy)</option>
+                            <option value="3" selected>3-way (Recommended)</option>
+                            <option value="4">4-way (High redundancy)</option>
+                        </select>
+                        <small>Storage replication across zones</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div>
+                <div class="section">
+                    <h2>Calculated Requirements</h2>
+
+                    <div class="result-card">
+                        <h3>Worker Node Count (Generic Calculation)</h3>
+                        <div class="result-item">
+                            <span class="result-label">Worker Nodes (by VM density)</span>
+                            <span class="result-value" id="workerNodes">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Control Plane Nodes</span>
+                            <span class="result-value">3</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Total Cluster Nodes</span>
+                            <span class="result-value" id="totalNodes">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Actual VM Density</span>
+                            <span class="result-value" id="actualDensity">-</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Compute Resources</h3>
+                        <div class="result-item">
+                            <span class="result-label">Total Physical CPUs</span>
+                            <span class="result-value" id="totalCpu">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Total vCPUs Required</span>
+                            <span class="result-value" id="totalVcpu">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Available vCPUs (with overcommit)</span>
+                            <span class="result-value" id="availableVcpu">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">CPU Utilization</span>
+                            <span class="result-value" id="cpuUtil">-</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Memory Resources</h3>
+                        <div class="result-item">
+                            <span class="result-label">Total Physical RAM</span>
+                            <span class="result-value" id="totalRam">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Total vRAM Required</span>
+                            <span class="result-value" id="totalVram">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Available vRAM (with overcommit)</span>
+                            <span class="result-value" id="availableVram">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">RAM Utilization</span>
+                            <span class="result-value" id="ramUtil">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Storage Requirements</h2>
+
+                    <div class="result-card">
+                        <h3>ODF Storage</h3>
+                        <div class="result-item">
+                            <span class="result-label">Total VM Disk Required</span>
+                            <span class="result-value" id="vmDiskTotal">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Raw Storage Capacity</span>
+                            <span class="result-value" id="rawStorage">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Usable Capacity (after replication)</span>
+                            <span class="result-value" id="usableStorage">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Storage Utilization</span>
+                            <span class="result-value" id="storageUtil">-</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Zone Distribution</h3>
+                        <div class="zone-distribution">
+                            <div class="zone-card">
+                                <h4>Zone 1</h4>
+                                <div class="value" id="zone1">-</div>
+                                <small>workers</small>
+                            </div>
+                            <div class="zone-card">
+                                <h4>Zone 2</h4>
+                                <div class="value" id="zone2">-</div>
+                                <small>workers</small>
+                            </div>
+                            <div class="zone-card">
+                                <h4>Zone 3</h4>
+                                <div class="value" id="zone3">-</div>
+                                <small>workers</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="warnings"></div>
+                </div>
+            </div>
+
+            <div class="section full-width">
+                <h2>Summary Report</h2>
+                <p style="margin-bottom: 15px; color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px;">
+                    <strong>Note:</strong> This is a baseline calculation. For actual deployment, add dedicated infrastructure nodes
+                    for ODF operators/storage (3-9 nodes) and/or control plane nodes (3 nodes) depending on your architecture.
+                </p>
+                <div id="summary" style="white-space: pre-wrap; font-family: monospace; background: white; padding: 20px; border-radius: 6px; line-height: 1.6;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Calculate on page load
+        window.onload = calculate;
+
+        // Recalculate on any input change
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('change', calculate);
+            el.addEventListener('input', calculate);
+        });
+
+        function calculate() {
+            // Get input values
+            const vmCount = parseInt(document.getElementById('vmCount').value);
+            const vmCpu = parseInt(document.getElementById('vmCpu').value);
+            const vmRam = parseInt(document.getElementById('vmRam').value);
+            const vmDisk = parseInt(document.getElementById('vmDisk').value);
+
+            const nodeCpu = parseInt(document.getElementById('nodeCpu').value);
+            const nodeRam = parseInt(document.getElementById('nodeRam').value);
+            const nodeStorage = parseFloat(document.getElementById('nodeStorage').value);
+            const vmDensity = parseInt(document.getElementById('vmDensity').value);
+
+            const cpuOvercommit = parseFloat(document.getElementById('cpuOvercommit').value);
+            const ramOvercommit = parseFloat(document.getElementById('ramOvercommit').value);
+            const replicaFactor = parseInt(document.getElementById('replicaFactor').value);
+
+            // Calculate worker nodes needed
+            const workerNodes = Math.ceil(vmCount / vmDensity);
+            const totalNodes = workerNodes + 3; // +3 for control plane
+            const actualDensity = Math.round(vmCount / workerNodes);
+
+            // Calculate CPU
+            const totalPhysicalCpu = workerNodes * nodeCpu;
+            const totalVcpuRequired = vmCount * vmCpu;
+            const availableVcpu = totalPhysicalCpu * cpuOvercommit;
+            const cpuUtilization = ((totalVcpuRequired / availableVcpu) * 100).toFixed(1);
+
+            // Calculate RAM
+            const totalPhysicalRam = workerNodes * nodeRam;
+            const totalVramRequired = vmCount * vmRam;
+            const availableVram = totalPhysicalRam * ramOvercommit;
+            const ramUtilization = ((totalVramRequired / availableVram) * 100).toFixed(1);
+
+            // Calculate Storage
+            const totalVmDisk = vmCount * vmDisk;
+            const rawStorage = workerNodes * nodeStorage * 1024; // Convert TB to GB
+            const usableStorage = rawStorage / replicaFactor;
+            const storageUtilization = ((totalVmDisk / usableStorage) * 100).toFixed(1);
+
+            // Zone distribution (3 zones)
+            const nodesPerZone = Math.floor(workerNodes / 3);
+            const remainder = workerNodes % 3;
+            const zone1 = nodesPerZone + (remainder > 0 ? 1 : 0);
+            const zone2 = nodesPerZone + (remainder > 1 ? 1 : 0);
+            const zone3 = nodesPerZone;
+
+            // Update UI
+            document.getElementById('workerNodes').textContent = workerNodes;
+            document.getElementById('totalNodes').textContent = totalNodes;
+            document.getElementById('actualDensity').textContent = `${actualDensity} VMs/node`;
+
+            document.getElementById('totalCpu').textContent = `${totalPhysicalCpu.toLocaleString()} cores`;
+            document.getElementById('totalVcpu').textContent = `${totalVcpuRequired.toLocaleString()} vCPUs`;
+            document.getElementById('availableVcpu').textContent = `${availableVcpu.toLocaleString()} vCPUs`;
+            document.getElementById('cpuUtil').textContent = `${cpuUtilization}%`;
+
+            document.getElementById('totalRam').textContent = `${totalPhysicalRam.toLocaleString()} GB`;
+            document.getElementById('totalVram').textContent = `${totalVramRequired.toLocaleString()} GB`;
+            document.getElementById('availableVram').textContent = `${availableVram.toLocaleString()} GB`;
+            document.getElementById('ramUtil').textContent = `${ramUtilization}%`;
+
+            document.getElementById('vmDiskTotal').textContent = `${totalVmDisk.toLocaleString()} GB (${(totalVmDisk/1024).toFixed(1)} TB)`;
+            document.getElementById('rawStorage').textContent = `${rawStorage.toLocaleString()} GB (${(rawStorage/1024).toFixed(1)} TB)`;
+            document.getElementById('usableStorage').textContent = `${usableStorage.toLocaleString()} GB (${(usableStorage/1024).toFixed(1)} TB)`;
+            document.getElementById('storageUtil').textContent = `${storageUtilization}%`;
+
+            document.getElementById('zone1').textContent = zone1;
+            document.getElementById('zone2').textContent = zone2;
+            document.getElementById('zone3').textContent = zone3;
+
+            // Generate warnings
+            let warnings = '';
+
+            if (cpuUtilization > 100) {
+                warnings += `<div class="result-card warning"><strong>⚠️ CPU Oversubscribed!</strong>Insufficient CPU capacity. Reduce VM count, increase overcommit ratio, or add more worker nodes.</div>`;
+            } else if (cpuUtilization > 80) {
+                warnings += `<div class="result-card warning"><strong>⚠️ High CPU Utilization</strong>CPU utilization is ${cpuUtilization}%. Consider adding buffer for burst workloads.</div>`;
+            } else {
+                warnings += `<div class="result-card success"><strong>✓ CPU Capacity OK</strong>${(100 - cpuUtilization).toFixed(1)}% headroom available.</div>`;
+            }
+
+            if (ramUtilization > 100) {
+                warnings += `<div class="result-card warning"><strong>⚠️ RAM Oversubscribed!</strong>Insufficient memory capacity. Reduce VM count, increase overcommit ratio, or add more worker nodes.</div>`;
+            } else if (ramUtilization > 80) {
+                warnings += `<div class="result-card warning"><strong>⚠️ High RAM Utilization</strong>RAM utilization is ${ramUtilization}%. Consider adding buffer for burst workloads.</div>`;
+            } else {
+                warnings += `<div class="result-card success"><strong>✓ RAM Capacity OK</strong>${(100 - ramUtilization).toFixed(1)}% headroom available.</div>`;
+            }
+
+            if (storageUtilization > 100) {
+                warnings += `<div class="result-card warning"><strong>⚠️ Storage Oversubscribed!</strong>Insufficient storage capacity. Increase NVMe size per node or add more worker nodes.</div>`;
+            } else if (storageUtilization > 80) {
+                warnings += `<div class="result-card warning"><strong>⚠️ High Storage Utilization</strong>Storage utilization is ${storageUtilization}%. Consider adding buffer for snapshots and growth.</div>`;
+            } else {
+                warnings += `<div class="result-card success"><strong>✓ Storage Capacity OK</strong>${(100 - storageUtilization).toFixed(1)}% headroom available.</div>`;
+            }
+
+            if (actualDensity > 100) {
+                warnings += `<div class="result-card warning"><strong>⚠️ High VM Density</strong>${actualDensity} VMs per node exceeds recommended maximum of 100. Performance may degrade.</div>`;
+            }
+
+            if (actualDensity < 30) {
+                warnings += `<div class="result-card warning"><strong>ℹ️ Low VM Density</strong>${actualDensity} VMs per node is quite low. Consider reducing worker node count for cost efficiency.</div>`;
+            }
+
+            document.getElementById('warnings').innerHTML = warnings;
+
+            // Generate summary
+            const summary = `
+WORKER NODE CAPACITY CALCULATION FOR ${vmCount.toLocaleString()} VMs
+${'='.repeat(60)}
+
+DISCLAIMER:
+This is a GENERIC MATH CALCULATOR that computes resource requirements
+based purely on VM specifications and node capacity. It does NOT account
+for:
+  • ODF storage pod overhead (OSDs, MONs, MGRs consume CPU/RAM)
+  • CNV operator/virt-handler overhead (~3-5 cores, ~5 GB RAM per node)
+  • OpenShift system pod overhead (kubelet, monitoring, logging)
+  • Hypervisor overhead (~10% of physical resources)
+  • Network bandwidth or IOPS limits
+  • Dedicated vs hyperconverged architecture differences
+
+RECOMMENDATION: Add 15-20% buffer to node count or treat calculated
+utilization percentages as higher than shown.
+
+${'='.repeat(60)}
+
+CLUSTER CONFIGURATION:
+  • Total Nodes: ${totalNodes} (${workerNodes} workers + 3 control plane)
+  • VM Density: ${actualDensity} VMs per worker node
+  • Zone Distribution: ${zone1} / ${zone2} / ${zone3} workers across 3 zones
+
+WORKER NODE SPECS:
+  • CPU: ${nodeCpu} cores per node
+  • RAM: ${nodeRam} GB per node
+  • Storage: ${nodeStorage} TB NVMe per node
+
+TOTAL CAPACITY:
+  • Physical CPUs: ${totalPhysicalCpu.toLocaleString()} cores → ${availableVcpu.toLocaleString()} vCPUs (${cpuOvercommit}:1 overcommit)
+  • Physical RAM: ${totalPhysicalRam.toLocaleString()} GB → ${availableVram.toLocaleString()} GB vRAM (${ramOvercommit}:1 overcommit)
+  • Raw Storage: ${(rawStorage/1024).toFixed(1)} TB → ${(usableStorage/1024).toFixed(1)} TB usable (${replicaFactor}x replication)
+
+VM REQUIREMENTS:
+  • Total vCPUs: ${totalVcpuRequired.toLocaleString()} (${vmCpu} vCPU/VM)
+  • Total vRAM: ${totalVramRequired.toLocaleString()} GB (${vmRam} GB/VM)
+  • Total Disk: ${(totalVmDisk/1024).toFixed(1)} TB (${vmDisk} GB/VM)
+
+UTILIZATION:
+  • CPU: ${cpuUtilization}%
+  • RAM: ${ramUtilization}%
+  • Storage: ${storageUtilization}%
+
+NETWORK:
+  • Recommended: ${workerNodes <= 20 ? '25 Gbps' : '100 Gbps'} per worker node
+  • Total bandwidth: ${(workerNodes * (workerNodes <= 20 ? 25 : 100)).toLocaleString()} Gbps aggregate
+
+ODF CONFIGURATION:
+  • Storage nodes: ${workerNodes} (all workers)
+  • OSDs per node: 1
+  • Total OSDs: ${workerNodes}
+  • Replication: ${replicaFactor}x across zones
+  • Mode: Block-only (RBD)
+  • Access mode: ReadWriteMany (RWX)
+            `.trim();
+
+            document.getElementById('summary').textContent = summary;
+        }
+
+        function copySummary() {
+            const summaryElement = document.getElementById('summary');
+            const summary = summaryElement.textContent;
+
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(summary).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    fallbackCopy(summary);
+                });
+            } else {
+                // Use fallback for file:// protocol
+                fallbackCopy(summary);
+            }
+        }
+
+        function fallbackCopy(text) {
+            // Create a temporary textarea
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+
+            // Make it invisible but accessible
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = '0';
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    showCopyError();
+                }
+            } catch (err) {
+                showCopyError();
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess() {
+            const btn = document.querySelector('.btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✓ Copied to Clipboard!';
+            btn.style.background = '#28a745';
+
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
+
+        function showCopyError() {
+            // Select the summary text for manual copy
+            const summaryElement = document.getElementById('summary');
+            const range = document.createRange();
+            range.selectNode(summaryElement);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+
+            // Show alert
+            alert('Auto-copy not available. The summary text is now selected - press Ctrl+C (or Cmd+C on Mac) to copy it.');
+        }
+    </script>
+</body>
+</html>
