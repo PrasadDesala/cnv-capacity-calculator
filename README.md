@@ -1,5 +1,7 @@
   # CNV Capacity Planning Calculator
 
+  **🔗 [Launch Calculator](https://prasaddesala.github.io/cnv-capacity-calculator/cnv_capacity_planning_calculator.html)**
+
   A web-based calculator for planning OpenShift Virtualization (CNV) infrastructure capacity.
 
   ## Overview
